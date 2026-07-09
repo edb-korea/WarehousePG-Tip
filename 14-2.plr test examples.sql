@@ -1,3 +1,104 @@
+-- 1. PL/R 중심치 차이 T검정 
+-- 테스트 데이터 테이블 생성
+CREATE TABLE public.lab_results (
+    group_name TEXT,
+    measurement REAL
+);
+
+-- 테스트 데이터 삽입
+INSERT INTO public.lab_results VALUES
+('test_group', 10.5), ('test_group', 11.2), ('test_group', 9.8), ('test_group', 10.9), ('test_group', 12.1),
+('control_group', 8.9), ('control_group', 9.5), ('control_group', 9.2), ('control_group', 10.1), ('control_group', 8.5);
+
+CREATE OR REPLACE FUNCTION perform_ttest(
+    sample1 REAL[],
+    sample2 REAL[]
+)
+RETURNS TEXT -- 결과를 텍스트로 보기 쉽게 반환
+AS $$
+    # R 스크립트 시작
+    # t.test 함수를 실행합니다.
+    test_result <- t.test(sample1, sample2)
+
+    # 결과에서 p-value와 t-statistic 값을 추출합니다.
+    p_value <- test_result$p.value
+    t_statistic <- test_result$statistic
+
+    # 결과를 보기 좋은 문자열로 포맷팅하여 반환합니다.
+    result_string <- paste0(
+        "T-Test Results: \n",
+        "T-statistic = ", round(t_statistic, 4), "\n",
+        "P-value = ", round(p_value, 4)
+    )
+
+    return(result_string)
+    # R 스크립트 종료
+$$ LANGUAGE plr;
+
+SELECT perform_ttest(
+    (SELECT ARRAY_AGG(measurement) FROM public.lab_results WHERE group_name = 'test_group'),
+    (SELECT ARRAY_AGG(measurement) FROM public.lab_results WHERE group_name = 'control_group')
+);
+
+
+-- 2. PL/R Dplyr 데이터 전처리 패키지
+-- 데이터 테이블 생성
+CREATE TABLE public.sales_data (
+    region TEXT,
+    product TEXT,
+    quantity INTEGER,
+    price NUMERIC
+);
+
+-- 데이터 삽입
+INSERT INTO public.sales_data VALUES
+('Asia', 'Laptop', 10, 1200),
+('Asia', 'Mouse', 100, 25),
+('EU', 'Laptop', 15, 1300),
+('Asia', 'Keyboard', 50, 75),
+('US', 'Laptop', 20, 1150),
+('EU', 'Mouse', 80, 28),
+('US', 'Keyboard', 60, 80);
+
+-- PL/R 확장 활성화 (최초 1회)
+CREATE EXTENSION IF NOT EXISTS plr;
+
+-- R에서 dplyr 패키지 설치 (Greenplum 각 세그먼트 호스트에서 실행 필요)
+-- install.packages('dplyr')
+
+CREATE OR REPLACE FUNCTION process_sales_with_dplyr(
+    regions text[], products text[], quantities float8[], prices float8[]
+)
+RETURNS TABLE(region text, avg_total_sale float8, total_quantity float8) AS $$
+    library(dplyr)
+
+    sales_df <- data.frame(
+        region = regions,
+        product = products,
+        quantity = quantities,
+        price = prices
+    )
+
+    result_df <- sales_df %>%
+        mutate(total_sale = quantity * price) %>%   # 총 판매액 열 추가
+        group_by(region) %>%                         # 지역별 그룹화
+        summarise(
+            avg_total_sale = mean(total_sale),
+            total_quantity = sum(quantity)
+        ) %>%
+        filter(avg_total_sale >= 3000) %>%           # 조건 필터링
+        arrange(desc(avg_total_sale))                # 결과 정렬 (선택 사항)
+
+    return(result_df)
+$$ LANGUAGE plr;
+
+SELECT * FROM process_sales_with_dplyr(
+    (SELECT ARRAY_AGG(region) FROM public.sales_data),
+    (SELECT ARRAY_AGG(product) FROM public.sales_data),
+    (SELECT ARRAY_AGG(quantity) FROM public.sales_data),
+    (SELECT ARRAY_AGG(price) FROM public.sales_data)
+);
+
 -- ================================================================
 -- Greenplum PL/R 고급 패키지 테스트 스크립트
 -- 대상 패키지: MCMCpack, lme4, ggplot2, randomForest,
