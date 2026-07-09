@@ -1,0 +1,45 @@
+-- 1. PL/Python Numpy histogram 함수
+-- 온도 데이터 테이블 생성
+CREATE TABLE public.sensor_readings (
+    sensor_id INT,
+    temperature REAL
+);
+
+-- 정규분포를 따르는 샘플 데이터 삽입
+INSERT INTO public.sensor_readings
+SELECT 1, (random() * 10 + 20)::REAL FROM generate_series(1, 1000); -- 평균 25도 근처의 데이터
+
+-- PL/Python 확장 활성화 (최초 1회)
+CREATE EXTENSION IF NOT EXISTS plpython3u;
+
+-- Numpy 패키지 설치 (Greenplum 각 세그먼트 호스트에서 실행 필요)
+-- pip install numpy
+
+-- 히스토그램 결과를 저장할 타입 생성
+CREATE TYPE histogram_result AS (
+    bin_edges REAL[],
+    counts BIGINT[]
+);
+
+CREATE OR REPLACE FUNCTION calculate_histogram(
+    data REAL[]
+)
+RETURNS histogram_result
+AS $$
+    # plpy 모듈과 numpy 라이브러리를 임포트합니다.
+    import numpy as np
+
+    # Numpy의 histogram 함수를 호출합니다.
+    # bins=10은 데이터를 10개의 구간으로 나누겠다는 의미입니다.
+    counts, bin_edges = np.histogram(data, bins=10)
+
+    # 결과를 생성한 사용자 정의 타입에 맞춰 딕셔너리 형태로 반환합니다.
+    # Numpy 배열을 Python 리스트로 변환해야 Greenplum 배열 타입과 호환됩니다.
+    return {
+        "counts": list(counts),
+        "bin_edges": list(bin_edges)
+    }
+$$ LANGUAGE plpython3u;
+
+SELECT (calculate_histogram(ARRAY_AGG(temperature))).*
+FROM public.sensor_readings;
