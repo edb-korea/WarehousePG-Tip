@@ -55,65 +55,34 @@ import json
 #   INNER_SCHEMAS["새스키마명"] = { "type": "record", "name": "...", "fields": [...] }
 # =============================================================================
 INNER_SCHEMAS = {
-
-    # =========================================================================
-    # fds.event_log — inner_schema.avro 원본 기준
-    #
-    # {
-    #   "name": "fds.event_log",
-    #   "description": "이벤트 로그",
-    #   "wireFormat": "AVRO",
-    #   "immutable": false,
-    #   "version": 2,
-    #   "fields": [
-    #     { "name": "evnt_dttm",  "description": "이벤트 발생시각", "dataType": "BIGINT",
-    #       "nullable": false, "primaryKey": true,  "partitionKey": false, "personalData": false },
-    #     { "name": "intg_cstno", "description": "통합 고객번호",   "dataType": "BIGINT",
-    #       "nullable": false, "primaryKey": true,  "partitionKey": true,  "personalData": true  },
-    #     { "name": "kafka_ofst", "description": "Kafka 오프셋",    "dataType": "KAFKA_OFFSET",
-    #       "nullable": false, "primaryKey": true,  "partitionKey": false, "personalData": false },
-    #     { "name": "cstno",      "description": "고객번호",         "dataType": "STRING",
-    #       "length": 32,  "nullable": false, "primaryKey": false, "partitionKey": false,
-    #       "encoding": "DICTIONARY", "personalData": false },
-    #     { "name": "evnt_cntx",  "description": "이벤트 컨텍스트", "dataType": "STRING",
-    #       "length": 16384, "nullable": false, "primaryKey": false, "partitionKey": false,
-    #       "personalData": false }
-    #   ],
-    #   "hashPartitions":  [ { "fieldNames": ["cstno"] } ],
-    #   "rangePartitions": [ { "fieldName": "evnt_dttm",
-    #                          "upperLimit": { "value": 1514732400000, "bound": "EXCLUSIVE" } } ]
-    # }
-    # =========================================================================
-    "fds.event_log": {
+    "event_log": {
         "type": "record",
-        "name": "fds.event_log",
-        "namespace": "lms",
+        "name": "event_log",
+        "namespace": "test",
         "fields": [
-            # 이벤트 발생시각 | BIGINT → long  | PK
+            # event time | BIGINT → long  | PK
             {"name": "evnt_dttm",  "type": ["null", "long"],   "default": None},
-            # 통합 고객번호   | BIGINT → long  | PK, partitionKey, 개인정보
+            # customer_id   | BIGINT → long  | PK, partitionKey, 개인정보
             {"name": "intg_cstno", "type": ["null", "long"],   "default": None},
-            # Kafka 오프셋   | KAFKA_OFFSET → long | PK (Avro data에는 null로 저장)
-            {"name": "kafka_ofst", "type": ["null", "long"],   "default": None},
-            # 고객번호       | STRING, encoding=DICTIONARY, length=32
-            {"name": "cstno",      "type": ["null", "string"], "default": None},
-            # 이벤트 컨텍스트 | STRING, length=16384
-            {"name": "evnt_cntx",  "type": ["null", "string"], "default": None},
+            # product_id      | STRING, encoding=DICTIONARY, length=32
+            {"name": "prtno",      "type": ["null", "string"], "default": None},
+            # payload | STRING, length=16384
+            {"name": "evnt_payload",  "type": ["null", "string"], "default": None},
         ],
     },
 
     # -------------------------------------------------------------------------
     # 추가 스키마 예시
     # -------------------------------------------------------------------------
-    # "fds.login_log": {
+    # "login_log": {
     #     "type": "record",
-    #     "name": "fds.login_log",
-    #     "namespace": "lms",
+    #     "name": "login_log",
+    #     "namespace": "test",
     #     "fields": [
-    #         {"name": "login_dttm", "type": ["null", "long"],   "default": None},  # 로그인 시각
-    #         {"name": "user_id",    "type": ["null", "string"], "default": None},  # 사용자 ID
-    #         {"name": "ip_addr",    "type": ["null", "string"], "default": None},  # IP 주소
-    #         {"name": "device_tp",  "type": ["null", "string"], "default": None},  # 디바이스 유형
+    #         {"name": "login_time", "type": ["null", "long"],   "default": None},  # 로그인 시각
+    #         {"name": "client_id",    "type": ["null", "string"], "default": None},  # 사용자 ID
+    #         {"name": "ip_address",    "type": ["null", "string"], "default": None},  # IP 주소
+    #         {"name": "device_type",  "type": ["null", "string"], "default": None},  # 디바이스 유형
     #     ],
     # },
 
