@@ -1,0 +1,33 @@
+[Unit]
+Description=Pg Airman MCP Server (Postgres tuning/analysis MCP)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 전용 계정 권장 (없다면 먼저 생성: sudo useradd -r -s /sbin/nologin airman)
+User=airman
+Group=airman
+
+# --- 접속/동작 설정 -------------------------------------------------------
+Environment=AIRMAN_MCP_DATABASE_URL=postgresql://username:password@localhost:5432/dbname
+Environment=AIRMAN_MCP_ACCESS_MODE=restricted
+Environment=AIRMAN_MCP_TRANSPORT=streamable-http
+Environment=AIRMAN_MCP_STREAMABLE_HTTP_HOST=0.0.0.0
+Environment=AIRMAN_MCP_STREAMABLE_HTTP_PORT=8001
+# 거버넌스/추적 기능 (선택)
+Environment=AIRMAN_MCP_PURPOSE=default
+Environment=AIRMAN_MCP_TRACING=true
+
+ExecStart=/opt/pg-airman-mcp/venv/bin/pg-airman-mcp
+Restart=on-failure
+RestartSec=5
+
+# --- 하드닝 (필요에 따라 조정, SELinux/ProtectSystem 충돌 시 완화) --------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/pg-airman-mcp
+
+[Install]
+WantedBy=multi-user.target
